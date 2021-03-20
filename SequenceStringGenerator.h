@@ -1,10 +1,8 @@
 #pragma once
 
-#include <cassert>
 #include <string>
 #include <vector>
 #include <type_traits>
-#include <unordered_map>
 #include <map>
 
 /// <summary>
@@ -25,23 +23,24 @@
 ///				uMap["Entity" + itoa(i)] // <--- this doesn't work, You can't merge two literal string
 ///			}
 ///			
-///			So you should use std::string as key. but comparing std::string is really slow than comparing address.
+///			So you should use std::string as key. but comparing std::string is 2x slower than comparing address.
 ///			So if you don't want to make std::string everytime, you should cache with std::string and pass iteral string data of std::string.
 ///			std::string::data() will return literal string data in std::string.
 ///			
-///			This library will help this
-///			Caching std::string and return literal string having same address
+///			This library will help this cumbersome works
+///			
 /// 
 ///			
 ///	Example : 
 /// std::unordered_map<const char*, int> uMap;
 /// for(int i = 0 ; i < 10 ; i++)
 ///	{
-///		uMap[SequenceStringGenerator<"Entity">::GetLiteralString(i)]; 
+///		uMap[SequenceStringGenerator::GetLiteralString("Test String Index : ", i)];  // GetLiteralString return literal string "Test String Index : i"
 ///	}
 /// </summary>
 
 #define DIGIT_NUM 3
+#define RESERVER_COUNT 100
 
 class SequenceStringGenerator
 {
@@ -49,47 +48,39 @@ class SequenceStringGenerator
 
 private:
 
+	static inline bool bmInit{ false };
+
 	/// <summary>
 	/// In C++20, You can initialize std::string at compile time ( constexpr )
 	/// </summary>
-	static inline std::vector<std::pair<const char*, std::vector<std::string>>> StringList{  };
+	static inline std::map<const char*, std::vector<std::string>> StringList{};
 
 public:
 
 	static inline const char* GetLiteralString(const char* key, size_t index)
 	{
-		assert(key != "");
+		auto& strList = StringList[key];
 
-		int strIndex = -1;
-		for (size_t i = 0; i < StringList.size() ; i++)
+		if (bmInit == false)
 		{
-			if (StringList[i].first == key)
-			{
-				strIndex = i;
-				break;
-			}
-			else if (StringList[i].first == "")
-			{
-				strIndex = i;
-				break;
-			}
+			strList.resize(RESERVER_COUNT);
+			bmInit = true;
 		}
-		if (strIndex == -1)
+	
+		if (strList.size() < index + 1)
 		{
-			StringList.emplace_back();
-			strIndex = StringList.size() - 1;
+			strList.resize((index + 1) * 2);
 		}
-		StringList[strIndex].first = key;
-
-		if (StringList[strIndex].second[index].empty() == true)
+		
+		if (strList[index].empty() == true)
 		{
 			char c[DIGIT_NUM + 1];
 			_itoa_s(static_cast<int>(index), c, DIGIT_NUM + 1, 10);
 
 			std::string str{ key };
 			str += c;
-			StringList[strIndex].second[index] = std::move(str);
+			strList[index] = std::move(str);
 		}
-		return StringList[strIndex].second[index].data();
+		return strList[index].data();
 	}
 };
