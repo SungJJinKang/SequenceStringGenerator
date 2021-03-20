@@ -1,0 +1,2 @@
+# SequenceStringGenerator
+Generate String Sequencely
